@@ -6,6 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CaseStudyArticle } from "@/components/case-study-article";
 
+// public_pages -> case_studies is to-one (unique FK): PostgREST returns an
+// object, but returns an array if the constraint ever changes. Accept both.
+function firstOrSelf<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
 async function getPage(slug: string) {
   // Anonymous read — RLS "published pages are public" policy applies.
   const supabase = await createClient();
@@ -31,7 +38,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const page = await getPage(slug);
-  const caseStudy = page?.case_studies?.[0];
+  const caseStudy = firstOrSelf(page?.case_studies);
   if (!caseStudy) return { title: "Not found" };
   return {
     title: caseStudy.title,
@@ -46,7 +53,7 @@ export default async function PublicPage({
 }) {
   const { slug } = await params;
   const page = await getPage(slug);
-  const caseStudy = page?.case_studies?.[0];
+  const caseStudy = firstOrSelf(page?.case_studies);
   if (!page || !caseStudy) notFound();
 
   // Best-effort view counting; anon clients can't update, so use the admin

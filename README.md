@@ -38,7 +38,7 @@ canned case study — no Anthropic key or spend needed during development.
    editor, and copy the URL + keys into `.env.local`.
 2. In Stripe: create the Pro product with a $5/month price, copy
    `STRIPE_PRICE_ID` and `STRIPE_SECRET_KEY`, and point a webhook at
-   `/api/stripe/webhook` (events: `checkout.session.completed`,
+   `/api/stripe/webhook` (events: `checkout.session.completed`, `customer.subscription.created`,
    `customer.subscription.updated`, `customer.subscription.deleted`).
 3. Set `ANTHROPIC_API_KEY` and remove `LLM_PROVIDER=mock`.
 4. Deploy to Vercel with the same env vars; set `NEXT_PUBLIC_APP_URL`.

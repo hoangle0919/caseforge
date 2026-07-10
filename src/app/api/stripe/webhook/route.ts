@@ -54,19 +54,36 @@ export async function POST(request: NextRequest) {
       break;
     }
 
+    case "customer.subscription.created":
     case "customer.subscription.updated": {
       const subscription = event.data.object;
       const active =
         subscription.status === "active" || subscription.status === "trialing";
-      await supabase
-        .from("subscriptions")
-        .update({
-          plan: active ? "pro" : "free",
-          status: active ? "active" : subscription.status,
-          current_period_end: periodEnd(subscription),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("stripe_subscription_id", subscription.id);
+      const fields = {
+        plan: active ? "pro" : "free",
+        status: active ? "active" : subscription.status,
+        current_period_end: periodEnd(subscription),
+        updated_at: new Date().toISOString(),
+      };
+      // Events can arrive before checkout.session.completed writes the id —
+      // fall back to the user_id we set in subscription_data.metadata.
+      const userId = subscription.metadata?.user_id;
+      if (userId) {
+        await supabase.from("subscriptions").upsert(
+          {
+            ...fields,
+            user_id: userId,
+            stripe_customer_id: String(subscription.customer),
+            stripe_subscription_id: subscription.id,
+          },
+          { onConflict: "user_id" },
+        );
+      } else {
+        await supabase
+          .from("subscriptions")
+          .update(fields)
+          .eq("stripe_subscription_id", subscription.id);
+      }
       break;
     }
 
