@@ -1,21 +1,23 @@
+import type { ZodType } from "zod";
+
 /**
  * Provider-agnostic LLM layer.
  *
- * Milestone 2 adds adapters here (anthropic.ts, openai.ts) plus a
- * `getProvider()` factory that reads LLM_PROVIDER from env. All generation
- * features (case studies, listings, content ideas) must go through this
- * interface — never import a vendor SDK from feature code.
+ * Feature code (case-study generation, listing copy, content ideas) must go
+ * through `getProvider()` from `./index` — never import a vendor SDK directly.
+ * Adapters: anthropic.ts (production), mock.ts (dev without an API key).
  */
 
-export interface GenerationRequest {
+export interface StructuredRequest<T> {
   system: string;
   prompt: string;
+  /** Output is validated against this schema before being returned. */
+  schema: ZodType<T>;
   maxTokens?: number;
-  temperature?: number;
 }
 
-export interface GenerationResult {
-  text: string;
+export interface StructuredResult<T> {
+  data: T;
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -23,5 +25,7 @@ export interface GenerationResult {
 
 export interface LLMProvider {
   readonly name: string;
-  generate(request: GenerationRequest): Promise<GenerationResult>;
+  generateStructured<T>(
+    request: StructuredRequest<T>,
+  ): Promise<StructuredResult<T>>;
 }

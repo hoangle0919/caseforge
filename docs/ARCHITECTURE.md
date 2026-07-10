@@ -108,17 +108,32 @@ Full schema with RLS policies: [`db/schema.sql`](../db/schema.sql).
 - Feature code never imports a vendor LLM SDK directly — everything goes
   through `src/lib/llm`.
 
-## M2 implementation checklist (next session)
+## M2 implementation checklist
 
-1. Supabase project + apply `db/schema.sql`; env vars in `.env.local`
-2. `lib/supabase` server/client helpers + auth wiring in `(auth)` forms,
-   middleware-protected `(app)` routes
-3. Dashboard shell + "New project" input page (title, kind, raw text)
-4. `lib/llm/anthropic.ts` + case-study generation prompt → writes
-   `case_studies` + `generated_outputs`
-5. Case study page with per-section editing; regenerate per output
-6. Markdown export (server route, streamed download)
-7. Public share page `p/[slug]` + publish toggle
-8. Stripe: product ($5/mo), checkout session, customer portal, webhook →
-   `subscriptions`; free-tier gate = 1 case study
-9. Vercel deploy + Supabase prod keys; smoke-test signup → generate → pay
+1. ~~`lib/supabase` server/client helpers + auth wiring, proxy-protected
+   `(app)` routes~~ ✅ (Next 16: `src/proxy.ts`, not middleware)
+2. ~~Dashboard shell + "New project" input page~~ ✅
+3. ~~LLM layer: provider abstraction (`lib/llm`), Anthropic adapter using
+   structured outputs (`messages.parse` + zod), mock provider for dev~~ ✅
+4. ~~Case study page with per-section editing + regenerate for failed drafts~~ ✅
+5. ~~Markdown export route + print-to-PDF view (Pro)~~ ✅
+6. ~~Public share page `p/[slug]` + publish toggle (Pro)~~ ✅
+7. ~~Stripe: checkout, customer portal, webhook → `subscriptions`; free-tier
+   gate = 1 case study~~ ✅
+8. **Remaining (needs accounts/keys):** create Supabase project + run
+   `db/schema.sql`; create Stripe product/price/webhook; set env vars
+   (`.env.example`); deploy to Vercel; smoke-test signup → generate → pay.
+   Steps are written out in README → "Going live".
+
+## M2 architecture notes
+
+- **LLM:** one `messages.parse` call (Claude, `claude-opus-4-8` by default,
+  `LLM_MODEL` to override) generates the case study and every derivative in a
+  single zod-validated response — no partial states to reconcile.
+  `LLM_PROVIDER=mock` exercises the whole flow offline.
+- **Auth:** the proxy layer is optimistic redirect only; real authorization is
+  RLS plus per-page `getUser()`.
+- **Payments:** the app never trusts itself about plan state — `subscriptions`
+  is a mirror of Stripe maintained by the webhook, and `getPlan()` reads it.
+- **PDF:** print-optimized page + browser print dialog. Zero dependencies; a
+  server-side renderer can replace it later without touching callers.

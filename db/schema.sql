@@ -13,6 +13,23 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
+-- Auto-create a profile row when a user signs up.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, email, full_name)
+  values (new.id, new.email, new.raw_user_meta_data ->> 'full_name');
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
 create table subscriptions (
   id uuid primary key default gen_random_uuid (),
   user_id uuid not null references profiles (id) on delete cascade,
@@ -265,6 +282,17 @@ begin
     );
   end loop;
 end $$;
+
+-- View counter for public pages (called with the service role from the app).
+create or replace function public.increment_view_count(page_id uuid)
+returns void
+language sql
+security definer set search_path = ''
+as $$
+  update public.public_pages
+  set view_count = view_count + 1
+  where id = page_id;
+$$;
 
 -- Published share pages are readable by anyone (the public share URL).
 create policy "published pages are public" on public_pages
