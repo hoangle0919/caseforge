@@ -43,6 +43,14 @@ canned case study — no Anthropic key or spend needed during development.
 3. Set `ANTHROPIC_API_KEY` and remove `LLM_PROVIDER=mock`.
 4. Deploy to Vercel with the same env vars; set `NEXT_PUBLIC_APP_URL`.
 
+## Deployment
+
+Production: **https://caseforge-tan.vercel.app** (Vercel project `caseforge`,
+Supabase project `jzulreptvwjzczhufkfy`, Stripe in **test mode** — activate the
+Stripe account and swap live keys before charging real cards). Generation runs
+on the mock provider until `ANTHROPIC_API_KEY` is set and `LLM_PROVIDER=mock`
+is removed (Vercel env + `.env.local`).
+
 ## Status
 
 - ✅ **Milestone 1** — landing page, pricing page, design system,
