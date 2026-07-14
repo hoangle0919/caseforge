@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/projects", "/billing", "/commerce"];
+const PROTECTED_PREFIXES = ["/dashboard", "/projects", "/billing"];
 
 // Next 16 proxy (formerly middleware): refreshes the Supabase session cookie
 // and gates the authed app area. Full authorization stays in server code — RLS
@@ -60,7 +60,6 @@ export const config = {
     "/dashboard/:path*",
     "/projects/:path*",
     "/billing/:path*",
-    "/commerce/:path*",
     "/login",
     "/signup",
   ],
