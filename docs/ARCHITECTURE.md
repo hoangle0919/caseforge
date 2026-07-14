@@ -1,76 +1,60 @@
 # Architecture & Build Plan
 
-Two-engine system in one codebase:
+**This repo is CaseForge only** — a $5/month subscription that turns messy
+student/builder work into polished proof-of-work artifacts.
 
-- **Engine 1 — CaseForge** (public): $5/month subscription that turns messy
-  student/builder work into polished proof-of-work artifacts.
-- **Engine 2 — CommerceOps** (private): operating dashboard for a Vietnam
-  desk/room/small-space micro-brand — sourcing, pricing, listings, content,
-  orders, profit.
+CommerceOps / **Góc Gọn** (private Vietnam desk/room/small-space micro-brand
+ops dashboard — sourcing, pricing, listings, content, orders, profit) used to
+live inside this repo as a second, owner-gated engine. As of 2026-07-14 it was
+split out into its own repo, database, and deployment: `~/STARTUP/gocgon`
+(github.com/hoangle0919/gocgon, private). See that repo's own
+`docs`/`README.md` for its plan. Nothing below describes CommerceOps/Góc Gọn
+anymore — this file is CaseForge-only history.
 
-## The build-order decision
+## Why it was one codebase, then wasn't
 
-**CaseForge ships first. CommerceOps second. One codebase, not two.**
-
-| Criterion | CaseForge | Commerce |
-|---|---|---|
-| Time to launchable | ~2 milestones (auth → generate → Stripe) | Dashboard is fast, but *revenue* needs suppliers, samples, fulfillment, content |
-| First dollar | One Stripe checkout away once live | Weeks of product testing before first sale |
-| Validation loop | Public: users sign up or they don't | Private: only validated by real product sales |
-| Legal/platform complexity | Trivial (Stripe SaaS) | Business registration, tax, platform rules in VN |
-| Skill fit | Same muscle as SellerFlow | Requires ops muscle you're still building |
-| Automation leverage | LLM generation *is* the product | LLM assists (listings, content), ops is manual first |
-| Portfolio signal | Launched SaaS with paying users | Real P&L — stronger later, slower to show |
-
-The commerce path likely makes more absolute money eventually, but its
-bottleneck is physical (samples, suppliers, fulfillment), not software. Writing
-software first for a physical bottleneck is procrastination that feels like
-work. So: launch the subscription product now, and build CommerceOps as the
-internal tool *when there are products to track* — which you can start sourcing
-in parallel, because that work is off-computer anyway.
-
-**Why one codebase:** both products are the same shape — auth'd dashboard, CRUD
-on Postgres, LLM generation, exports. Two repos would mean duplicating auth,
-billing, the LLM layer, and the UI kit before earning a dollar. Route groups
-keep them cleanly separated; CommerceOps simply has no marketing surface and is
-gated to the owner account. Split it out only if/when CommerceOps becomes a
-sellable product itself.
+The original call (2026-07-09) was to build CommerceOps *inside* caseforge to
+avoid duplicating auth/billing/LLM/UI infra before either product earned a
+dollar — both products were the same shape (auth'd dashboard, CRUD on
+Postgres, LLM generation), so route groups kept them separated cheaply. That
+held through M3's initial build. It changed once the two products were
+understood as genuinely separate businesses with separate data — a $5/mo SaaS
+subscription vs. a real commerce operation with supplier costs, margins, and
+orders — at which point sharing a database stopped making sense regardless of
+shared code shape. Split fully: own repo, own Supabase project, own Vercel
+deployment, own GitHub visibility (private, since it holds real business
+data — unlike this repo, which is a public portfolio piece).
 
 ## Milestones
 
 1. **M1 — Public face (this repo, done):** landing page, pricing page, auth
    page shells, design system, schema, this plan.
-2. **M2 — CaseForge MVP (revenue-critical path):** Supabase auth → project
-   input → LLM case-study generation → editor → Markdown export → public share
-   page → Stripe $5/month + free-tier limit (1 case study). Deploy to Vercel
-   at the *start* of M2, not the end — every commit ships.
-3. **M3 — CommerceOps (private):** product tracker, supplier tracker,
-   landed-cost/margin calculator, listing generator, content ideas, order +
-   profit tracker. Manual inputs and CSV import/export only. No Shopee/TikTok
-   APIs.
-4. **M4 — Automation:** weekly email report (CaseForge), weekly commerce
-   review, product scoring, content calendar generation, exportable test
-   reports.
+2. **M2 — CaseForge MVP (revenue-critical path, done):** Supabase auth →
+   project input → LLM case-study generation → editor → Markdown export →
+   public share page → Stripe $5/month + free-tier limit (1 case study).
+   Deployed to Vercel.
+3. ~~M3 — CommerceOps~~ **moved to `~/STARTUP/gocgon`** (2026-07-14).
+4. **M4 — Automation (CaseForge):** weekly email report, anything else that
+   makes the $5/mo subscription stickier.
 
 ## File structure
 
 ```
 caseforge/
 ├── db/
-│   └── schema.sql              # Full Supabase schema, both engines (see file)
+│   └── schema.sql              # Full Supabase schema (CaseForge only)
 ├── docs/
 │   └── ARCHITECTURE.md         # This file
 └── src/
     ├── app/
     │   ├── (marketing)/        # Public: landing, pricing         [M1 ✓]
-    │   ├── (auth)/             # login, signup                    [M1 shell ✓ → M2 wire]
-    │   ├── (app)/              # Authed product area              [M2]
+    │   ├── (auth)/             # login, signup                    [M2 ✓]
+    │   ├── (app)/              # Authed product area              [M2 ✓]
     │   │   ├── dashboard/
     │   │   ├── projects/       #   new project, case study, editor
-    │   │   ├── billing/
-    │   │   └── commerce/       #   CommerceOps, owner-gated       [M3]
-    │   ├── p/[slug]/           # Public share pages               [M2]
-    │   └── api/                #   stripe webhook, generation     [M2]
+    │   │   └── billing/
+    │   ├── p/[slug]/           # Public share pages               [M2 ✓]
+    │   └── api/                #   stripe webhook, generation     [M2 ✓]
     ├── components/
     │   ├── ui/                 # shadcn primitives
     │   ├── marketing/          # navbar, footer, pricing, faq, demo
@@ -78,29 +62,26 @@ caseforge/
     └── lib/
         ├── llm/                # Provider-agnostic LLM layer (types.ts now;
         │                       #   anthropic.ts / openai.ts + prompts in M2)
-        ├── supabase/           # client/server helpers            [M2]
-        ├── stripe/             # checkout + webhook helpers       [M2]
-        └── export/             # markdown/pdf renderers           [M2]
+        ├── supabase/           # client/server helpers            [M2 ✓]
+        ├── stripe/             # checkout + webhook helpers       [M2 ✓]
+        └── export/             # markdown/pdf renderers           [M2 ✓]
 ```
 
 ## Database
 
 Full schema with RLS policies: [`db/schema.sql`](../db/schema.sql).
 
-- Shared: `profiles`, `subscriptions` (Stripe mirror, plan free/pro)
-- CaseForge: `projects` (raw input) → `case_studies` (structured sections) →
+- `profiles`, `subscriptions` (Stripe mirror, plan free/pro)
+- `projects` (raw input) → `case_studies` (structured sections) →
   `generated_outputs` (derivatives, jsonb by kind) → `public_pages` (slug,
   published flag)
-- CommerceOps: `suppliers`, `products`, `pricing_calculations`,
-  `product_tests`, `content_ideas`, `orders` (issue notes on the order),
-  `expenses`, `profit_snapshots`
 - Every row is owned via `user_id` RLS; published share pages get a public
   `select` policy.
 
 ## Rules that keep this revenue-focused
 
-- Every PR must map to: paid CaseForge users, commerce profit, or portfolio
-  signal. If it maps to none, don't build it.
+- Every PR must map to: paid CaseForge users or portfolio signal. If it maps
+  to neither, don't build it.
 - No fake social proof — no invented testimonials or user counts, ever. It's a
   proof-of-work product.
 - No fragile integrations before revenue: no Shopee/TikTok APIs, no repo
